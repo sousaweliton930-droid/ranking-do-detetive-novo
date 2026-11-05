@@ -21,7 +21,7 @@ A hospedagem gratuita do Render perde SQLite em reinícios e não permite disco.
 
 1. Codex cria branch de tarefa, modifica o código e executa `python -m unittest discover -s tests -v`, compilação e `node --check static/app.js`.
 2. Codex envia a branch e abre PR para `main`, com resumo e resultado dos testes. **Não integrar automaticamente em tarefas futuras sem aprovação explícita do usuário.**
-3. O responsável aprova a versão integrando o PR. O workflow de `main` verifica os testes e a associação a um PR integrado; push direto falha no gate de publicação. A primeira integração desta preparação pode ser feita no escopo da autorização da Tarefa 02.
+3. O responsável aprova a versão integrando o PR. O workflow de `main` verifica os testes e a associação a um PR integrado; push direto falha no gate de publicação. A primeira integração desta preparação também aguarda autorização explícita do usuário para o PR #1.
 4. Render publica somente `main`, com **After CI Checks Pass** (`autoDeployTrigger: checksPass`). Alterações em outras branches não vão para produção. Não desligar os gates nem configurar **On Commit**. A conexão real GitHub/Render é indispensável.
 5. Conferir o SHA em `/healthz`, logs e o site. O banco está fora do checkout, no disco. Com SQLite em disco, a troca de versão pode ter breve indisponibilidade; Render não promete zero downtime nessa configuração.
 
