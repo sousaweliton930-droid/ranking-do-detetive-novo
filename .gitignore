@@ -11,3 +11,5 @@ instance/
 *.sqlite-*
 *.db
 *.jsonl.gz
+
+.ethiodeploy/

@@ -54,6 +54,18 @@ class ProductionTests(unittest.TestCase):
         self.assertEqual(app.config['PUBLIC_ORIGIN'],'https://new-app.onrender.com')
         self.assertEqual(app.config['TRUSTED_HOSTS'],['new-app.onrender.com'])
         self.assertEqual(app.test_client().get('/healthz',base_url='http://new-app.onrender.com').status_code,200)
+    def test_public_origin_configures_host_on_other_platforms(self):
+        config={k:v for k,v in self.config.items() if k not in ('PUBLIC_ORIGIN','TRUSTED_HOSTS')}
+        with patch.dict(os.environ,{'PUBLIC_ORIGIN':'https://ranking-test.ethiodeploy.app','ALLOWED_HOSTS':''}):
+            # Vazio explícito deve ser recusado; não ampliar hosts sem autorização.
+            with patch('production.os.path.ismount',return_value=True):
+                with self.assertRaises(RuntimeError): create_app(config)
+        with patch.dict(os.environ,{'PUBLIC_ORIGIN':'https://ranking-test.ethiodeploy.app'}):
+            with patch('production.os.path.ismount',return_value=True): app=create_app(config)
+        self.assertEqual(app.config['TRUSTED_HOSTS'],['ranking-test.ethiodeploy.app'])
+        response=app.test_client().get('/',base_url='https://ranking-test.ethiodeploy.app')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(app.test_client().get('/',base_url='https://unexpected.example').status_code,400)
     def test_restart_update_backup_and_restore_preserve_data(self):
         first=self.app()
         with first.app_context():

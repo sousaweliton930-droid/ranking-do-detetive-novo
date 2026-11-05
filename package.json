@@ -1,7 +1,0 @@
-{
-  "name": "ranking-do-detetive-novo",
-  "private": true,
-  "scripts": {
-    "dev": "COOKIE_SECURE=0 .venv/bin/python app.py"
-  }
-}
