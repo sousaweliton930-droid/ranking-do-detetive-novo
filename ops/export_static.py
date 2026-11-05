@@ -4,8 +4,10 @@ from shutil import copytree
 from tempfile import TemporaryDirectory
 import os
 import re
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 OUT = ROOT / "_site"
 PREFIX = "/ranking-do-detetive-novo/"
 PAGES = {"": "index.html", "atualizacao": "atualizacao/index.html", "carteira": "carteira/index.html", "canais": "canais/index.html"}
