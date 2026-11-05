@@ -27,6 +27,12 @@ class ProductionTests(unittest.TestCase):
         with patch('production.os.path.ismount',return_value=True):
             for changes in ({'SECRET_KEY':'short'},{'SESSION_COOKIE_SECURE':False},{'DATABASE':'relative.sqlite'},{'DATABASE':'/tmp/ephemeral.sqlite'},{'TRUSTED_HOSTS':None}):
                 with self.assertRaises(RuntimeError): create_app({**self.config,**changes})
+    def test_postgres_production_requires_tls_without_local_disk(self):
+        from production import validate_production
+        config={**self.config,'DATABASE':'postgresql://user:test-only@example.neon.tech/db?sslmode=require','PERSISTENT_DATA_DIR':'','BACKUP_DIR':''}
+        validate_production(config)
+        for url in ['postgresql://user:test-only@example.neon.tech/db?sslmode=disable','postgresql://user@example.neon.tech/db?sslmode=require']:
+            with self.assertRaises(RuntimeError): validate_production({**config,'DATABASE':url})
     def test_https_public_auth_cookies_and_host(self):
         app=self.app(); client=app.test_client()
         redirect=client.get('/',base_url='http://ranking.example.org')

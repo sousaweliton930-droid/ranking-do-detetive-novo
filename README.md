@@ -1,7 +1,7 @@
 # Ranking do Detetive
 
 Projeto independente, exclusivo de `sousaweliton930-droid/ranking-do-detetive-novo`.
-Flask + SQLite + Waitress, sem build de JavaScript, CDN, dados iniciais ou serviços obrigatórios adicionais. Python 3.12+ em Linux. As migrações criam tabelas vazias na primeira execução, sem recriar dados existentes.
+Flask + SQLite/PostgreSQL + Waitress, sem build de JavaScript, CDN, dados iniciais ou serviços obrigatórios adicionais. Python 3.12+ em Linux. As migrações criam tabelas vazias na primeira execução, sem recriar dados existentes.
 
 ## Execução local
 
@@ -60,11 +60,13 @@ Sem `date_format`, a data deve ser ISO 8601; sem fuso explícito, aplica-se `tim
 
 Configure variáveis no serviço/arquivo de ambiente restrito, não na linha de cron ou no Git. O comando importa apenas IDs cadastrados e ativados; não descobre arquivos na conta. Upsert por `(sheet_id, external_id)` evita duplicação; alterações geram revisão com valores anteriores. Linhas removidas da fonte permanecem no histórico. Logs distinguem tentativa, sucesso e erro sem persistir respostas remotas ou tokens. Bloqueio local impede sincronizadores simultâneos. Use uma instância de aplicação e um disco local persistente, não vários hosts com cópias independentes do SQLite.
 
-## Produção e atualizações pelo GitHub
+## Produção gratuita e atualizações pelo GitHub
 
-Configuração pronta em `render.yaml`, com disco persistente próprio, HTTPS, chave gerada no serviço e publicação de `main` após os checks. **Recurso pago ainda não contratado:** estimativa de US$ 7,25/mês, sujeita à confirmação do painel e autorização. Não há endereço público confirmado nesta preparação.
+`render.yaml` usa **Render Free sem disco**, com PostgreSQL persistente **Neon Free** em `DATABASE_URL` (segredo com TLS). `SECRET_KEY` é gerada no serviço. SQLite continua suportado para desenvolvimento e reversão; não usar SQLite efêmero em produção. Nenhum serviço pago está autorizado.
 
-O procedimento de ativação, integração segura de versões, backups, restauração e limites está em [docs/PRODUCAO.md](docs/PRODUCAO.md). Atualizações devem passar por PR aprovado e testes; não integrar ou publicar alterações futuras automaticamente sem essa aprovação. Os testes usam banco temporário separado. A aplicação de produção recusa disco não montado e segredo ausente/fraco.
+Publicação de `main` somente após PR aprovado e checks. Estado de conexão/publicação deve ser confirmado nas plataformas: arquivos prontos não significam site publicado. Consulte [docs/PRODUCAO.md](docs/PRODUCAO.md) para ativação, criação de administrador sem Shell Render, transferência reversível de dados, backup e recuperação.
+
+Para os testes reais de PostgreSQL, configure `TEST_POSTGRES_URL` para um banco **exclusivo de testes**. A suíte cria e remove schemas temporários próprios; nunca usar banco Neon de produção. O workflow GitHub já fornece uma instância PostgreSQL efêmera. Sem essa variável, os testes desse backend são explicitamente ignorados, não simulados.
 
 ## Integrações futuras e limites
 

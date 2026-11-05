@@ -9,7 +9,7 @@ from pathlib import Path
 
 MIGRATIONS = Path(__file__).parent / 'migrations'
 
-def connect(path):
+def _connect_sqlite(path):
     db = sqlite3.connect(str(path), timeout=30)
     db.row_factory = sqlite3.Row
     db.execute('PRAGMA foreign_keys=ON')
@@ -32,7 +32,7 @@ def backup_database(source, directory):
         raise
     return target
 
-def migrate(path, backup_dir, migrations=MIGRATIONS):
+def _migrate_sqlite(path, backup_dir, migrations=MIGRATIONS):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with open(str(path) + '.migrate.lock', 'a') as lock:
@@ -68,3 +68,19 @@ def migrate(path, backup_dir, migrations=MIGRATIONS):
             return len(pending)
         finally:
             db.close()
+
+
+def is_postgres(target):
+    return str(target).startswith(('postgres://','postgresql://'))
+
+def connect(target):
+    if is_postgres(target):
+        from postgres_storage import Connection
+        return Connection(target)
+    return _connect_sqlite(target)
+
+def migrate(target, backup_dir=None, migrations=None):
+    if is_postgres(target):
+        from postgres_storage import migrate as migrate_pg, MIGRATIONS as PG_MIGRATIONS
+        return migrate_pg(target,migrations or PG_MIGRATIONS)
+    return _migrate_sqlite(target,backup_dir,migrations or MIGRATIONS)

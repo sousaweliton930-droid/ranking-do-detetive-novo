@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 import click
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
-from storage import connect, migrate, backup_database
+from storage import connect, migrate, backup_database, is_postgres
 from production import validate_production
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -21,7 +21,7 @@ def now():
 
 def create_app(config=None):
     app = Flask(__name__)
-    app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32), DATABASE=os.environ.get('DATABASE', str(ROOT/'instance/data.sqlite')), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE','1')=='1', PERMANENT_SESSION_LIFETIME=timedelta(hours=4), MAX_CONTENT_LENGTH=65536)
+    app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32), DATABASE=os.environ.get('DATABASE_URL') or os.environ.get('DATABASE', str(ROOT/'instance/data.sqlite')), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE','1')=='1', PERMANENT_SESSION_LIFETIME=timedelta(hours=4), MAX_CONTENT_LENGTH=65536)
     render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME','')
     app.config.update(PRODUCTION=os.environ.get('APP_ENV')=='production',
         PERSISTENT_DATA_DIR=os.environ.get('PERSISTENT_DATA_DIR',''),
@@ -34,7 +34,8 @@ def create_app(config=None):
     validate_production(app.config)
     if app.config['PRODUCTION']:
         os.umask(0o077)
-    Path(app.config['DATABASE']).parent.mkdir(parents=True, exist_ok=True)
+    if not is_postgres(app.config['DATABASE']):
+        Path(app.config['DATABASE']).parent.mkdir(parents=True, exist_ok=True)
     def db():
         if 'db' not in g:
             g.db = connect(app.config['DATABASE'])
@@ -148,6 +149,8 @@ def create_app(config=None):
         db().execute('INSERT INTO users(username,password) VALUES(?,?)',(username,generate_password_hash(password))); db().commit(); click.echo('Administrador criado.')
     @app.cli.command('backup')
     def backup():
+        if is_postgres(app.config['DATABASE']):
+            raise click.ClickException('Para PostgreSQL, use ops/export_data.py fora do Render Free e guarde a cópia externamente.')
         target = backup_database(app.config['DATABASE'], app.config['BACKUP_DIR'])
         click.echo('Backup verificado: ' + str(target))
     @app.cli.command('migrate')

@@ -5,3 +5,9 @@ instance/
 .env
 *credentials*.json
 .pytest_cache/
+
+.env.*
+*.sqlite
+*.sqlite-*
+*.db
+*.jsonl.gz

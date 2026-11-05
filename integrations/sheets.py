@@ -61,7 +61,30 @@ def import_rows(db,sheet,rows):
 
 def sync_due(db):
     interval=max(1,int(os.environ.get('SYNC_INTERVAL_MINUTES','15')))
-    # Um único sincronizador por host; implantar com um volume SQLite compartilhado.
+    if getattr(db,'dialect',None)=='postgres':
+        # Locks transacionais funcionam também com o pooler do Neon.
+        for sheet in db.execute('SELECT * FROM sheets WHERE enabled=1').fetchall():
+            stamp=datetime.now(timezone.utc).isoformat()
+            try:
+                db.execute('BEGIN')
+                locked=db.execute('SELECT pg_try_advisory_xact_lock(73920500 + ?)',(sheet['id'],)).fetchone()[0]
+                if not locked:
+                    db.rollback(); continue
+                current=db.execute('SELECT * FROM sheets WHERE id=? AND enabled=1',(sheet['id'],)).fetchone()
+                if not current or (current['last_attempt'] and datetime.now(timezone.utc)-datetime.fromisoformat(current['last_attempt'])<timedelta(minutes=interval)):
+                    db.rollback(); continue
+                db.execute('UPDATE sheets SET last_attempt=? WHERE id=?',(stamp,sheet['id']))
+                count=import_rows(db,current,fetch(current))
+                db.execute('UPDATE sheets SET last_success=? WHERE id=?',(stamp,sheet['id']))
+                db.execute('INSERT INTO sync_logs(sheet_id,started,status,message) VALUES(?,?,?,?)',(sheet['id'],stamp,'sucesso',f'{count} entradas validadas.'))
+                db.commit()
+            except Exception as exc:
+                db.rollback()
+                message=str(exc) if isinstance(exc,ValueError) else 'Falha de acesso ou leitura na origem ('+type(exc).__name__+').'
+                db.execute('UPDATE sheets SET last_attempt=? WHERE id=?',(stamp,sheet['id']))
+                db.execute('INSERT INTO sync_logs(sheet_id,started,status,message) VALUES(?,?,?,?)',(sheet['id'],stamp,'erro',message)); db.commit()
+        return
+    # SQLite: um sincronizador por host, mesmo banco persistente.
     lock_path=os.environ.get('DATABASE','instance/data.sqlite')+'.sync.lock'
     with open(lock_path,'w') as lock:
         try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -77,6 +100,5 @@ def sync_due(db):
                 db.execute('INSERT INTO sync_logs(sheet_id,started,status,message) VALUES(?,?,?,?)',(sheet['id'],stamp,'sucesso',f'{count} entradas validadas.')); db.commit()
             except Exception as exc:
                 db.rollback()
-                # Não persistir respostas remotas ou conteúdo de credenciais.
                 message=str(exc) if isinstance(exc,ValueError) else 'Falha de acesso ou leitura na origem ('+type(exc).__name__+').'
                 db.execute('INSERT INTO sync_logs(sheet_id,started,status,message) VALUES(?,?,?,?)',(sheet['id'],stamp,'erro',message)); db.commit()

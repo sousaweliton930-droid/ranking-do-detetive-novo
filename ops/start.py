@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app
-from storage import backup_database
+from storage import backup_database, is_postgres
 from waitress import serve
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -24,7 +24,7 @@ def backups():
         threading.Event().wait(86400)
 
 if __name__ == '__main__':
-    if app.config['PRODUCTION']:
+    if app.config['PRODUCTION'] and not is_postgres(app.config['DATABASE']):
         threading.Thread(target=backups, daemon=True, name='sqlite-backup').start()
     # Render termina TLS na borda. Waitress aceita somente o protocolo encaminhado;
     # o serviço não deve ter uma rota direta à porta interna fora da rede Render.

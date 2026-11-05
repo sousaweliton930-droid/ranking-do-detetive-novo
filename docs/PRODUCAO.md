@@ -1,49 +1,68 @@
-# Publicação e manutenção
+# Render Free + Neon Free — orçamento R$ 0
 
-## Estado desta preparação
+## Estado e limites
 
-O projeto foi preparado para um **serviço novo no Render**, com runtime Python e disco persistente próprio. Nada depende do V63. O arquivo `render.yaml` é uma configuração a aplicar, não prova de serviço criado. Não ativar antes da autorização de custo e da conexão legítima do Render/GitHub. Não utilizar URL pública de clone como substituta da conexão GitHub: ela não oferece auto deploy.
+Este projeto é exclusivo de `sousaweliton930-droid/ranking-do-detetive-novo`. O Blueprint usa **Render Free, sem disco e sem banco Render**. Os dados ficam no PostgreSQL externo do **Neon Free**, independente do filesystem efêmero da aplicação. SQLite permanece implementado para uso local e reversão. Nada acessa o V63.
 
-Estimativa inicial: Starter US$ 7/mês + 1 GiB de disco US$ 0,25/mês = US$ 7,25/mês, sem impostos/excedentes. Confirmar o preço no painel antes de criar. Nenhum recurso pago foi contratado nesta preparação. Referências: [planos](https://render.com/pricing), [discos persistentes](https://render.com/docs/disks), [limitações gratuitas](https://render.com/docs/free).
+Configuração pronta não significa contas conectadas, deploy realizado ou persistência externa comprovada. Antes de criar recursos, conferir plano Free nos DOIS provedores e ausência de assinatura, auto upgrade ou cobrança. Se qualquer etapa exigir pagamento ou cartão com risco de cobrança, interromper. Não contratar add-ons, disco, cron ou banco pago. Não executar o Blueprint antigo Starter.
 
-A hospedagem gratuita do Render perde SQLite em reinícios e não permite disco. PythonAnywhere gratuito oferece disco persistente, mas exige renovação mensal e novas contas não incluem agendamentos; sua automação também exige um fluxo específico de API/console. Para manter esta aplicação e atualizações simples sem migração de banco, a escolha é Render com um disco. Não é alegado que inexista alternativa gratuita.
+Condições consultadas: Render Free pode dormir após 15 minutos sem tráfego e tem cotas de execução/build/tráfego. Neon Free tem 1 GB por projeto, 100 CU-h/mês e cotas de transferência; atingir cotas pode suspender processamento ou escritas. Os dados não dependem de o Render estar acordado. Não há promessa de disponibilidade permanente gratuita. Referências: [Render Free](https://render.com/docs/free), [Neon Free](https://neon.com/docs/introduction/plans).
 
-## Primeira publicação (depois da autorização)
+## Primeira publicação autorizada
 
-1. Conectar uma conta Render autorizada e sua integração GitHub **somente** ao repositório `sousaweliton930-droid/ranking-do-detetive-novo`. Criar um novo Blueprint a partir de `main` usando `render.yaml`. Nunca selecionar serviço ou disco existente. Manter uma instância; discos não são compartilhados entre serviços.
-2. Revisar os custos antes de confirmar. `SECRET_KEY` é gerada pelo Render e guardada no ambiente do serviço; nunca copiar seu valor para o GitHub, chat ou logs. O banco usa `/var/data/ranking.sqlite`; backups ficam em `/var/data/backups`. Esse disco permanece entre releases/reinícios. O build não abre o banco; a migração só roda na inicialização, quando o disco está montado. A aplicação recusa iniciar produção sem o mount, chave externa forte ou cookies Secure.
-3. A aplicação usa automaticamente `RENDER_EXTERNAL_HOSTNAME`, fornecido pelo Render, para fixar os hosts autorizados e a origem HTTPS real. Não é preciso adivinhar nem cadastrar uma URL inicial. Para domínio personalizado futuro, configurar `ALLOWED_HOSTS` e `PUBLIC_ORIGIN` no ambiente e manter também o hostname exigido pelos health checks. Render oferece HTTPS na borda; Waitress aceita o protocolo encaminhado exclusivamente dentro dessa rede. Não expor essa configuração de proxy a clientes diretos em uma VPS.
-4. No Shell do **novo** serviço, criar a conta com `flask --app app:create_app create-admin seu_usuario` e digitar a senha no prompt. Não inserir senhas em comandos, YAML ou logs. Até a criação, o painel permanece inacessível. O comando não cria senha padrão nem cadastro aberto.
-5. Conferir `/healthz` via HTTPS, página inicial no navegador e redirecionamento de `/admin` para login. Conferir cookies Secure/HttpOnly, HSTS, logs e um backup. Realizar uma gravação administrativa autorizada e verificar sua persistência após um deploy; não inserir dados fictícios na produção. Não declarar essa persistência externa validada somente porque testes locais passaram.
-6. Ativar/revisar a proteção de `main` no GitHub: exigir PR, status **Testes essenciais** e **Integração aprovada em main**, impedir force push e exclusão. Não habilitar auto merge. Para equipe com revisor distinto, exigir aprovação de revisão e descarte de aprovações antigas. Em repositório com um único proprietário, a aprovação é o próprio ato humano de integrar o PR, após conferir os testes; ele não pode aprovar formalmente o próprio PR. Essas regras de proteção precisam ser verificadas no GitHub; CODEOWNERS por si só não as ativa.
+1. Conectar contas legítimas Render e Neon. Criar **um projeto Neon novo** no plano Free, sem reutilizar bancos/credenciais. Escolher região próxima do serviço Render (Virginia). O subdomínio gratuito do Render dispensa compra de domínio.
+2. Copiar a URL PostgreSQL fornecida pelo Neon diretamente para o segredo `DATABASE_URL` do NOVO serviço Render; nunca colocar em arquivo rastreado, PR, logs ou chat. Manter TLS (`sslmode=require` ou verificação superior). A aplicação não usa fallback para SQLite se uma URL PostgreSQL falhar.
+3. Se houver registros reais no SQLite deste projeto, fazer a transferência controlada descrita abaixo ANTES de iniciar o serviço no Neon. Não inicializar o destino antes da cópia: o utilitário exige um banco novo. Se o projeto estiver vazio, as migrações criam somente tabelas vazias na primeira inicialização. Não criar registros fictícios para demonstrar a publicação.
+4. Revisar o PR #1 contra a autorização atual: visual aprovado, quatro páginas, SQLite preservado, PostgreSQL adicional, Render `plan: free`, nenhum disco/serviço pago ou segredo. Integrar a versão revisada em `main` somente conforme a autorização da sessão. Manter as futuras tarefas em PR separado; não aprovar automaticamente versões futuras.
+5. Criar um NOVO Blueprint Render pela integração GitHub, exclusivamente deste repositório e de `main`, usando `render.yaml`. Conferir preço R$ 0 antes de confirmar. Não usar URL pública de clone como substituta da conexão GitHub, pois isso não habilita publicação automática. Informar `DATABASE_URL` como segredo. `SECRET_KEY` é gerada no ambiente do Render; não inserir senha administrativa no YAML.
+6. A origem HTTPS e o host permitido vêm automaticamente de `RENDER_EXTERNAL_HOSTNAME`. O servidor inicia com `python ops/start.py`, porta `PORT`, Waitress e protocolo HTTPS do proxy Render. Essa confiança no proxy é exclusiva da rede Render; não expor essa porta diretamente em outra infraestrutura.
+7. Render Free não oferece Shell/SSH: criar o administrador pelo CLI local desta versão, com `DATABASE_URL` temporariamente configurada em ambiente seguro apontando ao NOVO Neon, executando `flask --app app:create_app create-admin seu_usuario`. Digitar a senha no prompt, nunca em argumentos de comando, chat ou GitHub. Não há senha padrão, cadastro público nem endpoint de bootstrap. Até criar uma conta, as alterações administrativas permanecem inacessíveis.
+8. Validar URL HTTPS real, quatro páginas e bloqueio administrativo. Conferir `/healthz`, SHA publicado e logs. Uma implantação adicional deve manter a MESMA URL do Neon e os registros existentes. Só declarar persistência de produção comprovada após essa verificação real; os testes locais não provam acesso à conta Neon.
 
-## Atualizações futuras — procedimento curto
+## Futuras atualizações pelo Codex
 
-1. Codex cria branch de tarefa, modifica o código e executa `python -m unittest discover -s tests -v`, compilação e `node --check static/app.js`.
-2. Codex envia a branch e abre PR para `main`, com resumo e resultado dos testes. **Não integrar automaticamente em tarefas futuras sem aprovação explícita do usuário.**
-3. O responsável aprova a versão integrando o PR. O workflow de `main` verifica os testes e a associação a um PR integrado; push direto falha no gate de publicação. A primeira integração desta preparação também aguarda autorização explícita do usuário para o PR #1.
-4. Render publica somente `main`, com **After CI Checks Pass** (`autoDeployTrigger: checksPass`). Alterações em outras branches não vão para produção. Não desligar os gates nem configurar **On Commit**. A conexão real GitHub/Render é indispensável.
-5. Conferir o SHA em `/healthz`, logs e o site. O banco está fora do checkout, no disco. Com SQLite em disco, a troca de versão pode ter breve indisponibilidade; Render não promete zero downtime nessa configuração.
+1. Alteração em branch de tarefa → testes SQLite/PostgreSQL → push → PR para `main`.
+2. O responsável aprova explicitamente a versão e integra o PR. Preservar o visual, registros e configurações gratuitas.
+3. Render acompanha apenas `main`, com **After CI Checks Pass** (`checksPass`). O workflow exige testes e associação do commit a PR integrado; push direto falha no gate. Alterações em branches de tarefa não são publicadas.
+4. Conferir SHA em `/healthz`, logs e comportamento público. Banco externo permanece entre deploys. Não ativar auto upgrade de plano ou ignorar cotas.
 
-A automação só estará comprovada quando um merge aprovado for publicado com sucesso no serviço real. YAML e workflow preparados não equivalem a deploy funcionando.
+O workflow inicia PostgreSQL efêmero no runner GitHub e executa os mesmos fluxos essenciais também nesse backend; nunca recebe credenciais Neon de produção. Configurar/verificar regras de proteção de `main` exigindo PR e os checks **Testes essenciais** e **Integração aprovada em main**, sem force push ou auto merge. CODEOWNERS não ativa regras sozinho. Se um único proprietário integrar seus próprios PRs, o ato de integrar representa sua aprovação; revisão formal exige outra pessoa. Não declarar regras de proteção ativas sem conferir o GitHub.
 
-## Migrações, backups e recuperação
+## SQLite e PostgreSQL, sem perda ou troca automática
 
-- `migrations/` contém SQL versionado, executado em transação, com checksum registrado em `schema_migrations`. Não editar migrações já aplicadas; adicionar um novo arquivo numerado. O esquema inicial reconhece o banco anterior sem apagar seus registros.
-- Antes de aplicar novas migrações sobre um banco existente, o processo salva uma cópia consistente com a API SQLite Backup. Se a cópia ou a migração falhar, o servidor não inicia com esquema parcial. Código anterior ao esquema também é recusado: rollback precisa ser compatível, não apenas trocar o commit.
-- `python ops/start.py` cria um backup no início e a cada 24h, verificando integridade; `flask --app app:create_app backup` permite uma cópia manual. Só uma instância deve executar o serviço.
-- As cópias permanecem no disco persistente, com acesso 0600. Monitorar espaço pelo painel/logs e exportar cópias regularmente por SSH/SFTP do serviço autorizado para armazenamento seguro separado. Cópias no mesmo disco permitem recuperação de erro de aplicação; não substituem backup externo para perda/exclusão do volume. A exportação externa não foi configurada sem uma conta de hospedagem.
-- Não apagar registros para liberar espaço. Arquivar cópias antigas externamente; o sistema não exclui automaticamente backups ou o banco.
-- Para restaurar, parar as escritas e usar `python ops/restore.py /var/data/backups/arquivo.sqlite /var/data/restaurado.sqlite`. O comando verifica integridade e **recusa sobrescrever qualquer destino existente**. Atualizar `DATABASE` para o novo arquivo no ambiente do serviço e reiniciar; preservar o banco anterior. Executar novamente `python -m unittest ...` nunca deve usar esse caminho: testes usam `TemporaryDirectory`.
+- Sem `DATABASE_URL`, o modo local usa SQLite (`DATABASE` opcional). Produção SQLite continua exigindo volume montado, caminhos absolutos e backups persistentes. Essa opção não é utilizável no Render Free.
+- Com `DATABASE_URL`, todas as tabelas (inclusive usuários, histórico/revisões, sincronizações e limites de login) estão no PostgreSQL. Os tipos de aplicação foram preservados; IDs e relações são mantidos.
+- Migrações SQLite existentes permanecem imutáveis. PostgreSQL tem migrações próprias em `migrations/postgres/`, com checksum e lock transacional compatível com pooling. As migrações atuais são aditivas e transacionais. Falha reverte o lote, sem esquema parcial; versões anteriores ao esquema ou arquivos alterados são recusados.
+- Não aplicar migrações destrutivas ou editar uma já aplicada. Futuras alterações devem ser aditivas, compatíveis com o código anterior e acompanhadas de cópia/snapshot antes da aplicação. Não executar DROP para reverter a mudança de backend.
 
-## Segurança, logs e Google
+### Transferência reversível
 
-Produção exige SECRET_KEY externa ≥32 caracteres, mount persistente, host autorizado, cookies Secure e origem HTTPS fixa. HTTP redireciona para a origem definida e envia HSTS. Login/CSRF/autorização continuam obrigatórios para alterações; limitação de tentativas está agora no SQLite e sobrevive a reinícios. O acesso administrativo revê a existência da conta a cada requisição. Não há segredo fixo nem senha de bootstrap.
+Parar as escritas administrativas/sincronizações durante a cópia e a troca. Configurar `SOURCE_DATABASE` e `TARGET_DATABASE` no ambiente seguro do CLI, sem valores em argumentos ou arquivos rastreados, e executar:
 
-Render reúne logs de execução e erros; o painel da aplicação contém os registros de sincronização. `/healthz` confirma acesso ao banco e informa o SHA da release, sem revelar credenciais ou conteúdo das tabelas. Evitar registrar valores de formulário ou arquivos secretos.
+```sh
+python ops/transfer_data.py
+```
 
-Google Sheets permanece implementado e desligado, sem credencial solicitada. Não criar cron externo separado com outro SQLite: um cron Render não compartilha o disco deste web service. A futura ativação deve executar o comando de sincronização no mesmo host/disco ou adaptar o agendamento de forma autorizada. Esta tarefa não ativa coleta Telegram nem altera o visual.
+Origem pode ser SQLite ou PostgreSQL; destino deve ser banco PostgreSQL novo (schema sem tabelas) ou caminho SQLite inexistente. Não adivinhar caminhos nem URLs; usar somente dados autorizados deste projeto. O utilitário lê uma visão consistente da origem, copia IDs/relacionamentos/hashes de senha sem logá-los, confere contagem e SHA-256 por tabela e grava os dados do destino em transação. Erro reverte as inserções; não há merge/sobrescrita de registros. Sequências PostgreSQL são ajustadas para novos cadastros não colidirem com IDs importados.
 
-## Validação desta entrega
+O arquivo SQLite de origem permanece intocado. Para retornar após novas escritas no Neon, copiar o PostgreSQL atual para um NOVO arquivo SQLite pelo mesmo procedimento, conferir e então trocar a configuração; simplesmente voltar a um arquivo antigo perderia as escritas posteriores. Não descartar origem ou cópias. Destino de uma tentativa falha pode conter tabelas vazias; usar novo destino em nova tentativa, sem excluir dados existentes.
 
-Os testes locais exercitam migrações reais, persistência entre instâncias do app, backup/restauro, transação de migração inválida, HTTPS/cookies/hosts e bloqueio de login após reinício. A detecção de mount do provedor é substituída apenas nos testes. Também foi executado o processo Waitress de produção em banco temporário, com o proxy HTTPS do provedor simulado, e a renderização foi verificada em Chromium em 390 px e 1440 px. Isso não verifica a conta Render, seu volume real ou certificado público; esses itens permanecem pendentes da ativação autorizada.
+## Backup e recuperação
+
+- A rotina de cópia diária SQLite é mantida somente para implantação SQLite com disco. Ela não roda no Render Free/PostgreSQL: uma cópia no disco efêmero do Render não seria backup persistente.
+- Neon Free oferece recuperação limitada por histórico/snapshot conforme o plano; conferir a janela no painel (documentação consultada: 6 horas de histórico e 1 snapshot manual). Antes de qualquer futura migração com dados reais, criar um snapshot/cópia externa e testar recuperação. Não assumir retenção ilimitada.
+- Para uma cópia externa, configurar `DATABASE_URL` de forma segura FORA do Render Free e executar `python ops/export_data.py /caminho/seguro/backup.jsonl.gz`. A exportação usa transação consistente, contém dados privados/hashes de senha, tem permissão 0600 e recusa sobrescrever arquivos. Guardá-la em armazenamento externo protegido já autorizado; não enviar para GitHub.
+- Para recuperar: `python ops/export_data.py /caminho/novo.sqlite --restore-from /caminho/seguro/backup.jsonl.gz`. O destino deve inexistir. O arquivo compactado, marcador final, contagens, colunas e vínculos são verificados; erro reverte os registros. O SQLite recuperado pode ser transferido a um NOVO Neon com `ops/transfer_data.py`, sem apagar o banco anterior.
+- Agendamento externo de backups não foi ativado sem conta/destino autorizado. Exportação manual e recuperação estão implementadas e testadas. Monitorar cota e retenção. Não anunciar uma política automática externa como já funcionando.
+
+## Segurança e integrações
+
+Produção exige segredo externo forte, cookies Secure/HttpOnly/SameSite, CSRF, origem HTTPS fixa e host permitido; PostgreSQL exige TLS e credenciais na URL secreta. Erro de conexão não imprime a URL e não muda para banco vazio. Login, autorização e limites persistem no PostgreSQL após reinícios.
+
+Google Sheets foi preservado, sem conectar Google ou ativar coleta. O sincronizador usa locks transacionais no PostgreSQL, compatíveis com pooling Neon, em vez de depender de arquivo no disco temporário. A futura atualização de 15 minutos pode executar fora do web service com o mesmo Neon e credencial autorizada, mas não está agendada nesta entrega. Telegram e outras fontes permanecem inativos.
+
+## Validação realizada
+
+SQLite e PostgreSQL real (PostgreSQL 16 local, isolado em schemas de teste): 29 casos distintos aprovados, cobrindo autenticação, CSRF, administração, quatro páginas, filtros, ROI, deduplicação/revisões, sincronização, persistência após reinicialização, migração atômica e recusa de TLS inseguro. A transferência ida/volta foi conferida por tabela, inclusive hashes de senha utilizáveis, revisões, logs e limites; a cópia de SQLite v1 preservou o SHA-256 do arquivo original. Exportação/restauro em arquivo novo também foram testados.
+
+Chromium confirmou as cinco rotas (quatro públicas e login), navegação e ausência de overflow/erros JavaScript em 390 e 1440 px, com o servidor Waitress conectado ao PostgreSQL de teste. Nenhum arquivo de templates/estilos do visual aprovado foi alterado. A conexão Neon real, contas gratuitas e persistência após redeploy externo ainda precisam ser verificadas quando as plataformas forem conectadas.
