@@ -1,3 +1,5 @@
+> **Atualização de hospedagem:** Render foi descartado pelo usuário por exigir cartão. Não provisionar serviços Render. O alvo é EthioDeploy Free com o MESMO Neon existente; seguir [ETHIODEPLOY.md](ETHIODEPLOY.md). As seções de Render abaixo são histórico da preparação anterior, não instruções atuais de publicação. Os procedimentos de dados continuam válidos.
+
 # Render Free + Neon Free — orçamento R$ 0
 
 ## Estado e limites

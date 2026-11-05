@@ -23,11 +23,13 @@ def create_app(config=None):
     app = Flask(__name__)
     app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32), DATABASE=os.environ.get('DATABASE_URL') or os.environ.get('DATABASE', str(ROOT/'instance/data.sqlite')), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE','1')=='1', PERMANENT_SESSION_LIFETIME=timedelta(hours=4), MAX_CONTENT_LENGTH=65536)
     render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME','')
+    public_origin = os.environ.get('PUBLIC_ORIGIN','https://'+render_host if render_host else '')
+    public_host = urlparse(public_origin).hostname or render_host
     app.config.update(PRODUCTION=os.environ.get('APP_ENV')=='production',
         PERSISTENT_DATA_DIR=os.environ.get('PERSISTENT_DATA_DIR',''),
         BACKUP_DIR=os.environ.get('BACKUP_DIR',str(ROOT/'instance/backups')),
-        PUBLIC_ORIGIN=os.environ.get('PUBLIC_ORIGIN','https://'+render_host if render_host else ''),
-        TRUSTED_HOSTS=[h.strip() for h in os.environ.get('ALLOWED_HOSTS',render_host).split(',') if h.strip()] or None)
+        PUBLIC_ORIGIN=public_origin,
+        TRUSTED_HOSTS=[h.strip() for h in os.environ.get('ALLOWED_HOSTS',public_host).split(',') if h.strip()] or None)
     if app.config['PRODUCTION']:
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
     if config: app.config.update(config)

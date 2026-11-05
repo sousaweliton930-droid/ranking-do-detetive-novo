@@ -1,4 +1,4 @@
-"""Entrada Render: uma instância, disco persistente e proxy HTTPS conhecido."""
+"""Entrada de produção: Flask/Waitress atrás do proxy HTTPS da hospedagem."""
 import logging
 import os
 import sys
@@ -26,8 +26,8 @@ def backups():
 if __name__ == '__main__':
     if app.config['PRODUCTION'] and not is_postgres(app.config['DATABASE']):
         threading.Thread(target=backups, daemon=True, name='sqlite-backup').start()
-    # Render termina TLS na borda. Waitress aceita somente o protocolo encaminhado;
-    # o serviço não deve ter uma rota direta à porta interna fora da rede Render.
+    # A hospedagem termina TLS na borda. Aceitar somente o protocolo encaminhado;
+    # esta porta interna não deve ser exposta fora da rede do proxy da hospedagem.
     serve(app, host='0.0.0.0', port=int(os.environ.get('PORT','8000')), threads=4,
           trusted_proxy='*' if app.config['PRODUCTION'] else None,
           trusted_proxy_headers={'x-forwarded-proto'} if app.config['PRODUCTION'] else set(),

@@ -1,0 +1,11 @@
+# Declarar Python explicitamente; o site não tem backend Node/NPM.
+providers = ["python"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
+
+[phases.install]
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && python -m pip install --no-cache-dir -r requirements.lock"]
+
+[start]
+cmd = "APP_ENV=production COOKIE_SECURE=1 python ops/start.py"

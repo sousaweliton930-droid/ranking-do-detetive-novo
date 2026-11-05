@@ -21,7 +21,7 @@ Acesse `/admin`. É possível cadastrar/editar canais, rascunhar/publicar/editar
 
 ## Prévia em ambiente remoto
 
-O projeto oferece `npm run dev` para ferramentas de prévia; esse comando inicia o mesmo servidor Flask/Waitress, sem instalar dependências Node. Prepare a `.venv` conforme as instruções acima. A porta é definida por `PORT` (padrão 8000).
+Inicie a prévia com `COOKIE_SECURE=0 .venv/bin/python app.py`. O backend não utiliza Node/NPM; package.json não deve ser criado na raiz, pois prejudica a detecção Python da hospedagem. Prepare a `.venv` conforme as instruções acima. A porta é definida por `PORT` (padrão 8000).
 
 `http://localhost:8000` só funciona no computador/ambiente que executa o servidor. Não é um link remoto compartilhável. No ChatGPT, a prévia exige o encaminhamento fornecido pelo ambiente. Se `sites-preview start /workspace/ranking-do-detetive-novo` retornar `preview relay unavailable`, o encaminhamento está indisponível; iniciar ou reiniciar Flask não resolve essa falha de infraestrutura. Não publicar externamente nem desabilitar as proteções administrativas para contornar esse problema.
 
@@ -60,13 +60,15 @@ Sem `date_format`, a data deve ser ISO 8601; sem fuso explícito, aplica-se `tim
 
 Configure variáveis no serviço/arquivo de ambiente restrito, não na linha de cron ou no Git. O comando importa apenas IDs cadastrados e ativados; não descobre arquivos na conta. Upsert por `(sheet_id, external_id)` evita duplicação; alterações geram revisão com valores anteriores. Linhas removidas da fonte permanecem no histórico. Logs distinguem tentativa, sucesso e erro sem persistir respostas remotas ou tokens. Bloqueio local impede sincronizadores simultâneos. Use uma instância de aplicação e um disco local persistente, não vários hosts com cópias independentes do SQLite.
 
-## Produção gratuita e atualizações pelo GitHub
+## Publicação gratuita sem cartão
 
-`render.yaml` usa **Render Free sem disco**, com PostgreSQL persistente **Neon Free** em `DATABASE_URL` (segredo com TLS). `SECRET_KEY` é gerada no serviço. SQLite continua suportado para desenvolvimento e reversão; não usar SQLite efêmero em produção. Nenhum serviço pago está autorizado.
+Alvo atual: **EthioDeploy Free + Neon Free já existente**. Render foi descartado porque exigiu cartão. As instruções exatas estão em [docs/ETHIODEPLOY.md](docs/ETHIODEPLOY.md). Não criar um novo banco nem ativar addon de banco na hospedagem.
 
-Publicação de `main` somente após PR aprovado e checks. Estado de conexão/publicação deve ser confirmado nas plataformas: arquivos prontos não significam site publicado. Consulte [docs/PRODUCAO.md](docs/PRODUCAO.md) para ativação, criação de administrador sem Shell Render, transferência reversível de dados, backup e recuperação.
+O backend continua Python/Flask/Waitress. `.python-version`, `Procfile` e `nixpacks.toml` fixam a detecção Python, a instalação por `requirements.lock` e a inicialização por `python ops/start.py`. Não há backend Node/NPM.
 
-Para os testes reais de PostgreSQL, configure `TEST_POSTGRES_URL` para um banco **exclusivo de testes**. A suíte cria e remove schemas temporários próprios; nunca usar banco Neon de produção. O workflow GitHub já fornece uma instância PostgreSQL efêmera. Sem essa variável, os testes desse backend são explicitamente ignorados, não simulados.
+O histórico de migrações, cópia reversível, backup e recuperação permanece documentado em [docs/PRODUCAO.md](docs/PRODUCAO.md). Instruções antigas de Render nesse documento são referência histórica, não autorização para usá-lo.
+
+Para os testes PostgreSQL, `TEST_POSTGRES_URL` deve apontar para banco exclusivo de testes. A suíte cria/remove schemas temporários próprios; nunca usar Neon de produção. O workflow GitHub usa PostgreSQL efêmero. Sem essa variável, esses testes são explicitamente ignorados.
 
 ## Integrações futuras e limites
 
