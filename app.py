@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import secrets
 import sqlite3
@@ -9,6 +10,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 import click
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from storage import connect, migrate, backup_database
+from production import validate_production
 from werkzeug.security import generate_password_hash, check_password_hash
 
 ROOT = Path(__file__).parent
@@ -19,31 +22,49 @@ def now():
 def create_app(config=None):
     app = Flask(__name__)
     app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32), DATABASE=os.environ.get('DATABASE', str(ROOT/'instance/data.sqlite')), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE','1')=='1', PERMANENT_SESSION_LIFETIME=timedelta(hours=4), MAX_CONTENT_LENGTH=65536)
+    render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME','')
+    app.config.update(PRODUCTION=os.environ.get('APP_ENV')=='production',
+        PERSISTENT_DATA_DIR=os.environ.get('PERSISTENT_DATA_DIR',''),
+        BACKUP_DIR=os.environ.get('BACKUP_DIR',str(ROOT/'instance/backups')),
+        PUBLIC_ORIGIN=os.environ.get('PUBLIC_ORIGIN','https://'+render_host if render_host else ''),
+        TRUSTED_HOSTS=[h.strip() for h in os.environ.get('ALLOWED_HOSTS',render_host).split(',') if h.strip()] or None)
+    if app.config['PRODUCTION']:
+        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
     if config: app.config.update(config)
+    validate_production(app.config)
+    if app.config['PRODUCTION']:
+        os.umask(0o077)
     Path(app.config['DATABASE']).parent.mkdir(parents=True, exist_ok=True)
     def db():
         if 'db' not in g:
-            g.db = sqlite3.connect(app.config['DATABASE'], timeout=30)
-            g.db.row_factory = sqlite3.Row
-            g.db.execute('PRAGMA foreign_keys=ON')
+            g.db = connect(app.config['DATABASE'])
         return g.db
     app.db = db
-    with app.app_context(): db().executescript((ROOT/'schema.sql').read_text())
+    migrate(app.config['DATABASE'], app.config['BACKUP_DIR'])
     @app.teardown_appcontext
     def close(error=None):
         if 'db' in g: g.pop('db').close()
     @app.before_request
     def security():
+        if app.config['PRODUCTION'] and not request.is_secure and request.path != '/healthz':
+            # Redirecionamento para origem fixa; não confiar no Host ou em headers arbitrários.
+            return redirect(app.config['PUBLIC_ORIGIN'] + request.full_path.rstrip('?'), code=308)
         session.setdefault('csrf', secrets.token_hex(32))
         if request.method == 'POST' and not secrets.compare_digest(session['csrf'], request.form.get('csrf','')): abort(400)
     @app.after_request
     def headers(response):
         response.headers.update({'Content-Security-Policy':"default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'", 'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Cache-Control':'no-store'})
+        if app.config['PRODUCTION']:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         return response
+    @app.get('/healthz')
+    def health():
+        db().execute('SELECT COUNT(*) FROM schema_migrations').fetchone()
+        return {'status':'ok', 'release':os.environ.get('RENDER_GIT_COMMIT','local')}
     def private(fn):
         @wraps(fn)
         def wrapped(*a,**kw):
-            if not session.get('user'): return redirect(url_for('login'))
+            if not session.get('user') or not db().execute('SELECT id FROM users WHERE id=?',(session['user'],)).fetchone(): return redirect(url_for('login'))
             return fn(*a,**kw)
         return wrapped
     @app.get('/')
@@ -62,18 +83,26 @@ def create_app(config=None):
         rows=db().execute(sql+' ORDER BY e.occurred',args).fetchall()
         profit=sum(r['profit'] for r in rows); stake=sum(r['stake'] for r in rows)
         return render_template('public.html',page=page, channels=db().execute('SELECT * FROM channels ORDER BY name').fetchall(), posts=db().execute('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').fetchall(), sheets=db().execute('SELECT channel_id,spreadsheet_id FROM sheets').fetchall(), rows=rows,profit=profit,roi=profit/stake*100 if stake else None,period=period,channel=channel,last=db().execute('SELECT MAX(last_success) FROM sheets').fetchone()[0])
-    attempts={}
     @app.route('/admin/login',methods=['GET','POST'])
     def login():
         if request.method=='POST':
-            key=request.remote_addr; count,until=attempts.get(key,(0,0))
-            if until>time.time(): abort(429)
+            key=hashlib.sha256((request.remote_addr or 'unknown').encode()).hexdigest()
+            current=time.time()
+            limit=db().execute('SELECT * FROM login_limits WHERE client=?',(key,)).fetchone()
+            if limit and limit['blocked_until']>current: abort(429)
             user=db().execute('SELECT * FROM users WHERE username=?',(request.form.get('username',''),)).fetchone()
             valid=check_password_hash(user['password'] if user else generate_password_hash(secrets.token_hex(16)),request.form.get('password',''))
             if user and valid:
-                attempts.pop(key,None); session.clear(); session['user']=user['id']; session['csrf']=secrets.token_hex(32); session.permanent=True
+                db().execute('DELETE FROM login_limits WHERE client=?',(key,)); db().commit(); session.clear(); session['user']=user['id']; session['csrf']=secrets.token_hex(32); session.permanent=True
                 return redirect(url_for('admin'))
-            count+=1; attempts[key]=(count,time.time()+900 if count>=5 else 0); flash('Credenciais inválidas. Tente novamente.')
+            # Serializar a contagem para concorrência e preservar bloqueio após reinício.
+            db().execute('BEGIN IMMEDIATE')
+            limit=db().execute('SELECT * FROM login_limits WHERE client=?',(key,)).fetchone()
+            count=limit['failures']+1 if limit and current-limit['updated']<900 else 1
+            until=current+900 if count>=5 else 0
+            db().execute('INSERT INTO login_limits VALUES(?,?,?,?) ON CONFLICT(client) DO UPDATE SET failures=excluded.failures,blocked_until=excluded.blocked_until,updated=excluded.updated',(key,count,until,current))
+            db().execute('DELETE FROM login_limits WHERE updated<?',(current-86400,))
+            db().commit(); flash('Credenciais inválidas. Tente novamente.')
         return render_template('login.html',page='admin')
     @app.post('/admin/logout')
     @private
@@ -117,6 +146,13 @@ def create_app(config=None):
     def create_admin(username,password):
         if len(password)<12: raise click.ClickException('Use pelo menos 12 caracteres.')
         db().execute('INSERT INTO users(username,password) VALUES(?,?)',(username,generate_password_hash(password))); db().commit(); click.echo('Administrador criado.')
+    @app.cli.command('backup')
+    def backup():
+        target = backup_database(app.config['DATABASE'], app.config['BACKUP_DIR'])
+        click.echo('Backup verificado: ' + str(target))
+    @app.cli.command('migrate')
+    def migrate_command():
+        click.echo('Esquema atualizado; dados preservados.')
     @app.cli.command('sync')
     def sync():
         from integrations.sheets import sync_due

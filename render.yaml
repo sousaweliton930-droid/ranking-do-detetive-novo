@@ -1,0 +1,33 @@
+# CONFIGURAÇÃO PAGA, AINDA NÃO PROVISIONADA. Exige autorização antes de aplicar.
+# Estimativa: Starter US$7/mês + disco de 1 GiB US$0,25/mês, além de excedentes/impostos.
+services:
+  - type: web
+    name: ranking-do-detetive-novo
+    runtime: python
+    region: virginia
+    plan: starter
+    branch: main
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.lock
+    startCommand: python ops/start.py
+    healthCheckPath: /healthz
+    disk:
+      name: ranking-novo-dados
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: APP_ENV
+        value: production
+      - key: PERSISTENT_DATA_DIR
+        value: /var/data
+      - key: DATABASE
+        value: /var/data/ranking.sqlite
+      - key: BACKUP_DIR
+        value: /var/data/backups
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true

@@ -1,7 +1,7 @@
 # Ranking do Detetive
 
 Projeto independente, exclusivo de `sousaweliton930-droid/ranking-do-detetive-novo`.
-Flask + SQLite + Waitress, sem build de JavaScript, CDN, dados iniciais ou serviços obrigatórios adicionais. Python 3.12+ em Linux. As tabelas são criadas vazias na primeira execução.
+Flask + SQLite + Waitress, sem build de JavaScript, CDN, dados iniciais ou serviços obrigatórios adicionais. Python 3.12+ em Linux. As migrações criam tabelas vazias na primeira execução, sem recriar dados existentes.
 
 ## Execução local
 
@@ -60,15 +60,11 @@ Sem `date_format`, a data deve ser ISO 8601; sem fuso explícito, aplica-se `tim
 
 Configure variáveis no serviço/arquivo de ambiente restrito, não na linha de cron ou no Git. O comando importa apenas IDs cadastrados e ativados; não descobre arquivos na conta. Upsert por `(sheet_id, external_id)` evita duplicação; alterações geram revisão com valores anteriores. Linhas removidas da fonte permanecem no histórico. Logs distinguem tentativa, sucesso e erro sem persistir respostas remotas ou tokens. Bloqueio local impede sincronizadores simultâneos. Use uma instância de aplicação e um disco local persistente, não vários hosts com cópias independentes do SQLite.
 
-## Publicação futura — não realizada
+## Produção e atualizações pelo GitHub
 
-1. Provisionar um serviço Linux **novo** com Python 3.12+, volume persistente e HTTPS. Clonar somente este repositório e instalar requirements.
-2. Definir `SECRET_KEY` longa e aleatória no gerenciador de segredos, `DATABASE` como caminho absoluto no volume persistente e `COOKIE_SECURE=1` (padrão). Em produção, a chave estável é necessária para sessões sobreviverem a reinícios. Sem chave, o servidor usa uma efêmera; nenhum segredo é versionado.
-3. Criar o administrador via CLI e iniciar `python app.py` como serviço sem privilégios, com `PORT` configurada. Colocar atrás de proxy HTTPS; não expor a porta HTTP diretamente. Não habilitar debug. Limitar tentativas de `/admin/login` também no proxy: o limite interno de cinco falhas por 15 minutos é por processo/IP e reinicia junto com o serviço. Não confiar em X-Forwarded-For arbitrário.
-4. Fazer backup consistente de SQLite antes de atualizações (API SQLite backup ou parada do serviço), testar restauração e proteger volume/credenciais. O esquema inicial só cria tabelas ausentes; futuras mudanças precisam de migrações versionadas.
-5. Validar acesso público e bloqueio administrativo no domínio novo. Configurar Google e cron apenas quando desejado. Autorizar a publicação separadamente.
+Configuração pronta em `render.yaml`, com disco persistente próprio, HTTPS, chave gerada no serviço e publicação de `main` após os checks. **Recurso pago ainda não contratado:** estimativa de US$ 7,25/mês, sujeita à confirmação do painel e autorização. Não há endereço público confirmado nesta preparação.
 
-SQLite mantém canais, publicações, configuração de planilhas, entradas, revisões, usuários e logs. A sessão tem cookie HttpOnly/SameSite Strict, expira em quatro horas e exige token CSRF nas alterações; o logout limpa a sessão. Senhas usam scrypt via Werkzeug. Todas as consultas parametrizam entradas. CSP restringe scripts/estilos à própria origem.
+O procedimento de ativação, integração segura de versões, backups, restauração e limites está em [docs/PRODUCAO.md](docs/PRODUCAO.md). Atualizações devem passar por PR aprovado e testes; não integrar ou publicar alterações futuras automaticamente sem essa aprovação. Os testes usam banco temporário separado. A aplicação de produção recusa disco não montado e segredo ausente/fraco.
 
 ## Integrações futuras e limites
 
