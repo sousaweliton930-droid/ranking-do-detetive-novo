@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+instance/
+.env
+*credentials*.json
+.pytest_cache/
+
+.env.*
+*.sqlite
+*.sqlite-*
+*.db
+*.jsonl.gz

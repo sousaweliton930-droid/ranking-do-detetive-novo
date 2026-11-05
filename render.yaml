@@ -1,0 +1,24 @@
+# Apenas Render Free. PostgreSQL externo Neon Free, sem disco ou banco Render.
+services:
+  - type: web
+    name: ranking-do-detetive-novo
+    runtime: python
+    region: virginia
+    plan: free
+    branch: main
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.lock
+    startCommand: python ops/start.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
