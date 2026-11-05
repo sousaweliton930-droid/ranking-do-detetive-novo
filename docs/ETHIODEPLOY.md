@@ -7,6 +7,7 @@ EthioDeploy confirma suporte Python/Flask, HTTPS e plano Free sem cartão. São 
 O `package.json` da raiz era apenas um atalho de prévia, mas levava o builder à detecção Node/NPM. Foi removido; o frontend é JavaScript/CSS servido pelo Flask, sem compilação npm. A prévia local continua disponível por `COOKIE_SECURE=0 .venv/bin/python app.py`.
 
 - `.python-version`: Python 3.12.
+- URL pública confirmada pelo usuário: `https://ranking-do-detetive-novo.ethiodeploy.app`; já definida em `nixpacks.toml` como `PUBLIC_ORIGIN`, sem credenciais.
 - `nixpacks.toml`: provider **python**, instalação em venv com `requirements.lock` e inicialização em modo produção.
 - `Procfile`: inicia o mesmo servidor Waitress já implementado, com `APP_ENV=production` e cookies seguros.
 - O processo usa `0.0.0.0:$PORT`. Não usar `flask run` em produção nem procurar um export `app:app`; esta aplicação usa a factory `create_app` e seu servidor existente.
@@ -35,7 +36,7 @@ Esses identificadores não são credenciais. A URL com senha deve ir somente às
 2. Em **Settings → Environment variables**, preservar os valores corretos já existentes e preencher somente os ausentes:
    - `DATABASE_URL`: conexão do Neon existente, com TLS (`sslmode=require` ou superior); marcar **Sensitive** e **Runtime only**.
    - `SECRET_KEY`: chave aleatória estável de pelo menos 32 caracteres, gerada com segurança; **Sensitive** e **Runtime only**. Não trocar uma chave válida a cada deploy. Para gerar uma localmente: `python -c "import secrets; print(secrets.token_hex(32))"` e transferir diretamente ao campo secreto do painel, sem publicar o valor.
-   - `PUBLIC_ORIGIN`: URL HTTPS REAL mostrada pelo projeto, sem barra final. Ex.: formato `https://SEU-SLUG.ethiodeploy.app`, sem usar literalmente o exemplo. A aplicação deriva daí o host permitido; não é preciso adicionar `ALLOWED_HOSTS`, exceto para domínios extras autorizados. Se existir um override vazio/incorreto de `ALLOWED_HOSTS`, removê-lo ou corrigi-lo para o hostname real.
+   - `PUBLIC_ORIGIN`: `https://ranking-do-detetive-novo.ethiodeploy.app`, já declarada no repositório. Só corrigir no painel se houver um override antigo divergente. A aplicação deriva daí o host permitido; não é preciso adicionar `ALLOWED_HOSTS`, exceto para domínios extras autorizados. Se existir um override vazio/incorreto de `ALLOWED_HOSTS`, removê-lo ou corrigi-lo para o hostname real.
 3. Conferir plano **Free**, nenhum cartão/cobrança/addon, salvar e clicar **Deploy/Redeploy**. O link público válido é o retornado pela hospedagem após o deploy ficar Ready, não um hostname adivinhado.
 
 Essas variáveis são exigidas pelo guard de produção; ausência/erro faz o servidor recusar a inicialização. Essa recusa protege os dados e o painel administrativo. Não desabilitar HTTPS, autenticação ou o guard para fazer o deploy parecer saudável.
