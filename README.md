@@ -19,6 +19,12 @@ Abra http://localhost:8000. As quatro áreas públicas dispensam login. Para cri
 
 Acesse `/admin`. É possível cadastrar/editar canais, rascunhar/publicar/editar publicações, cadastrar/editar e ativar/desativar planilhas e visualizar os últimos 50 registros de sincronização. Sem conta criada não há acesso administrativo. Não existe cadastro público nem senha padrão. Conteúdo editorial é texto simples, escapado no HTML.
 
+## Prévia em ambiente remoto
+
+O projeto oferece `npm run dev` para ferramentas de prévia; esse comando inicia o mesmo servidor Flask/Waitress, sem instalar dependências Node. Prepare a `.venv` conforme as instruções acima. A porta é definida por `PORT` (padrão 8000).
+
+`http://localhost:8000` só funciona no computador/ambiente que executa o servidor. Não é um link remoto compartilhável. No ChatGPT, a prévia exige o encaminhamento fornecido pelo ambiente. Se `sites-preview start /workspace/ranking-do-detetive-novo` retornar `preview relay unavailable`, o encaminhamento está indisponível; iniciar ou reiniciar Flask não resolve essa falha de infraestrutura. Não publicar externamente nem desabilitar as proteções administrativas para contornar esse problema.
+
 ## Testes e verificação
 
 ```sh
